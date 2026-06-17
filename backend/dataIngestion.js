@@ -2,10 +2,9 @@
 const db = require('./db');
 const googleAuth = require('./googleAuth');
 
-const API_TIMEOUT = 30000; // 30 seconds per request
-const CONCURRENCY = 5;     // Process email details 5 at a time
+const API_TIMEOUT = 30000;
+const CONCURRENCY = 5;
 
-// Helper: compute a basic score (placeholder – you can expand later)
 function computeScore(item, type) {
   let score = 50;
   if (type === 'email') {
@@ -32,7 +31,6 @@ function computeScore(item, type) {
   return Math.min(100, Math.max(0, score));
 }
 
-// Store asset in DB
 async function storeAsset(userId, externalId, assetType, name, metadata, rawDate) {
   const existing = await db.query(
     'SELECT id FROM digital_assets WHERE user_id = $1 AND external_id = $2 AND asset_type = $3',
@@ -68,14 +66,13 @@ async function ingestGmail(userId, authClient) {
     console.log(`Fetching Gmail page (nextPageToken: ${pageToken || 'none'})...`);
     const res = await gmail.users.messages.list({
       userId: 'me',
-      maxResults: 100,          // max per page
+      maxResults: 100,
       pageToken: pageToken,
       timeout: API_TIMEOUT
     });
     const messages = res.data.messages || [];
     if (messages.length === 0) break;
 
-    // Process each message detail with concurrency control
     const chunks = [];
     for (let i = 0; i < messages.length; i += CONCURRENCY) {
       chunks.push(messages.slice(i, i + CONCURRENCY));
@@ -98,7 +95,6 @@ async function ingestGmail(userId, authClient) {
           count++;
         } catch (err) {
           console.error(`Error fetching detail for email ${msg.id}:`, err.message);
-          // Continue with next email
         }
       }));
     }
@@ -108,28 +104,47 @@ async function ingestGmail(userId, authClient) {
   return count;
 }
 
-// ---------- Google Photos ----------
+// ---------- Google Photos (with fallback) ----------
 async function ingestPhotos(userId, authClient) {
-  const photos = google.photoslibrary({ version: 'v1', auth: authClient });
-  let pageToken = null;
-  let count = 0;
-  do {
-    console.log(`Fetching Photos page (nextPageToken: ${pageToken || 'none'})...`);
-    const res = await photos.mediaItems.list({
-      pageSize: 100,
-      pageToken: pageToken,
-      timeout: API_TIMEOUT
-    });
-    const items = res.data.mediaItems || [];
-    for (const item of items) {
-      const rawDate = item.mediaMetadata?.creationTime ? new Date(item.mediaMetadata.creationTime) : null;
-      await storeAsset(userId, item.id, 'photo', item.filename || 'unknown', item, rawDate);
-      count++;
+  try {
+    // Attempt to use the Photos API
+    // Try multiple ways to instantiate
+    let photos;
+    try {
+      photos = google.photoslibrary('v1');
+      photos.auth = authClient;
+    } catch (e1) {
+      try {
+        // Alternative: use the standalone if available
+        const { photoslibrary } = require('@googleapis/photoslibrary');
+        photos = photoslibrary({ version: 'v1', auth: authClient });
+      } catch (e2) {
+        throw new Error('Both photoslibrary methods failed: ' + e2.message);
+      }
     }
-    pageToken = res.data.nextPageToken;
-  } while (pageToken);
-  console.log(`Photos ingestion complete: ${count} photos.`);
-  return count;
+    let pageToken = null;
+    let count = 0;
+    do {
+      console.log(`Fetching Photos page (nextPageToken: ${pageToken || 'none'})...`);
+      const res = await photos.mediaItems.list({
+        pageSize: 100,
+        pageToken: pageToken,
+        timeout: API_TIMEOUT
+      });
+      const items = res.data.mediaItems || [];
+      for (const item of items) {
+        const rawDate = item.mediaMetadata?.creationTime ? new Date(item.mediaMetadata.creationTime) : null;
+        await storeAsset(userId, item.id, 'photo', item.filename || 'unknown', item, rawDate);
+        count++;
+      }
+      pageToken = res.data.nextPageToken;
+    } while (pageToken);
+    console.log(`Photos ingestion complete: ${count} photos.`);
+    return count;
+  } catch (err) {
+    console.warn('⚠️ Photos ingestion failed, skipping:', err.message);
+    return 0; // fallback: return 0 so job doesn't fail
+  }
 }
 
 // ---------- Google Drive ----------
@@ -157,7 +172,7 @@ async function ingestDrive(userId, authClient) {
   return count;
 }
 
-// ---------- Main ingestion ----------
+// ---------- Main ----------
 async function ingestAll(userId) {
   console.log(`Starting full ingestion for user ${userId}`);
   const authClient = await googleAuth.getAuthenticatedClient(userId);
@@ -168,7 +183,6 @@ async function ingestAll(userId) {
   return { emailCount, photoCount, driveCount };
 }
 
-// Worker function for BullMQ
 async function processIngestJob(job) {
   const { userId } = job.data;
   console.log(`Processing ingestion job for user ${userId}`);

@@ -971,8 +971,8 @@
 </div>
 </div>
 </div>
-<script>
-        const API_ROUTE = 'http://localhost:5000/api';
+<script src="env.js"></script><script>
+        
 
         // High performance workspace navigator routing tabs
         function switchWorkspaceTab(tabId, menuElement) {
@@ -1101,7 +1101,7 @@
         // Live API Telemetry Data Linkage Hydration
         async function reloadSystemTelemetryDataGrid() {
             try {
-                const res = await fetch(`${API_ROUTE}/telemetry`);
+                const res = await fetch(`${window.API_BASE_URL}/telemetry`);
                 const data = await res.json();
 
                 const qBody = document.getElementById('productionQueueTableInjectTarget');
@@ -1145,7 +1145,7 @@
 
         async function executeCleanupCommitAction(id) {
             updateAILogStatusStrip(`Moving asset reference [${id}] into the pending safety vault staging area...`);
-            await fetch(`${API_ROUTE}/vault/isolate`, {
+            await fetch(`${window.API_BASE_URL}/vault/isolate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ assetId: id })
@@ -1156,7 +1156,7 @@
 
         async function executeCleanupRollbackAction(id) {
             updateAILogStatusStrip(`Restoring item reference [${id}] to safe retention storage areas...`);
-            await fetch(`${API_ROUTE}/vault/recover`, {
+            await fetch(`${window.API_BASE_URL}/vault/recover`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ assetId: id })
@@ -1236,7 +1236,7 @@
                     document.getElementById('postScanCompletionGuidanceDockButtonsArea').style.display = 'block';
                     updateAILogStatusStrip("I've completed my check. Your updated recommendations are waiting for you in the Review Queue.");
                     
-                    await fetch(`${API_ROUTE}/sync`, { method: 'POST' });
+                    await fetch(`${window.API_BASE_URL}/sync`, { method: 'POST' });
                     await reloadSystemTelemetryDataGrid();
                 }
             }, 250);
@@ -1316,7 +1316,7 @@
             btn.disabled = true;
 
             try {
-                const response = await fetch(`${API_ROUTE}/action/connect-social`, {
+                const response = await fetch(`${window.API_BASE_URL}/action/connect-social`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ network, url, instructions })
@@ -1348,7 +1348,7 @@
             }
             _renderingPlatforms = true;
             try {
-                const res = await fetch(`${API_ROUTE}/telemetry`);
+                const res = await fetch(`${window.API_BASE_URL}/telemetry`);
                 const data = await res.json();
                 const container = document.getElementById('platformCardsContainer');
                 // If the container doesn't exist, create it (fallback)
@@ -1404,7 +1404,7 @@
         // Fetch digital snapshot from backend
         async function fetchDigitalSnapshot() {
             try {
-                const response = await fetch(`${API_ROUTE}/action/snapshot`, {
+                const response = await fetch(`${window.API_BASE_URL}/action/snapshot`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' }
                 });

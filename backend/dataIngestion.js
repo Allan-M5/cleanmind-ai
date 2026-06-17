@@ -1,5 +1,6 @@
 ﻿const { google } = require('googleapis');
 const db = require('./db');
+const aiScoring = require('./aiScoring');
 const googleAuth = require('./googleAuth');
 
 const API_TIMEOUT = 30000;
@@ -42,18 +43,27 @@ async function storeAsset(userId, externalId, assetType, name, metadata, rawDate
   }
   const result = await db.query(
     `INSERT INTO digital_assets
-     (user_id, external_id, asset_type, content_hash, origin_created_at, mime_type, file_size_bytes, current_state)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+     (user_id, external_id, asset_type, content_hash, origin_created_at, mime_type, file_size_bytes, current_state, metadata)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
      RETURNING id`,
-    [userId, externalId, assetType, null, rawDate, null, 0, 'KEEP']
+    [userId, externalId, assetType, null, rawDate, null, 0, 'KEEP', JSON.stringify(metadata)]
   );
   const assetId = result.rows[0].id;
-  const score = computeScore(metadata, assetType);
-  await db.query(
-    `INSERT INTO asset_scores (asset_id, emotional_score, utility_score, time_score, quality_score, redundancy_score, final_meaning_score)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-    [assetId, Math.floor(score*0.3), Math.floor(score*0.3), Math.floor(score*0.2), Math.floor(score*0.1), Math.floor(score*0.1), score]
-  );
+
+  // Determine text content for AI scoring (if available)
+  let contentText = '';
+  if (assetType === 'email') {
+    contentText = (metadata.subject || '') + ' ' + (metadata.body || '');
+  } else if (assetType === 'drive') {
+    contentText = (metadata.name || '') + ' ' + (metadata.mimeType || '');
+  } else if (assetType === 'local') {
+    contentText = (metadata.name || '') + ' ' + (metadata.path || '');
+  }
+
+  // Score using AI or fallback
+  const scoreResult = await aiScoring.scoreAsset(assetId, userId, assetType, metadata, contentText);
+  console.log(`Asset ${externalId} scored ${scoreResult.score} (${scoreResult.source})`);
+
   return assetId;
 }
 
@@ -191,3 +201,4 @@ async function processIngestJob(job) {
 }
 
 module.exports = { ingestAll, processIngestJob };
+

@@ -1,4 +1,4 @@
-databases:
+﻿databases:
   - name: cleanmind-db
     plan: free
 
@@ -91,12 +91,13 @@ services:
           name: cleanmind-redis
           property: connectionString
 
-  - type: static_site
+  - type: web
     name: cleanmind-frontend
+    runtime: static
     repo: https://github.com/Allan-M5/cleanmind-ai.git
     branch: master
     buildCommand: npm run build
-    publishPath: .
+    staticPublishPath: .
     envVars:
       - key: API_URL
         value: https://cleanmind-backend.onrender.com/api

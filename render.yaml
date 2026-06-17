@@ -14,8 +14,8 @@ services:
     plan: free
     repo: https://github.com/Allan-M5/cleanmind-ai.git
     branch: master
-    buildCommand: npm install
-    startCommand: npm run start:all
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm run start:all
     envVars:
       - key: DB_HOST
         fromDatabase:
@@ -57,7 +57,7 @@ services:
     repo: https://github.com/Allan-M5/cleanmind-ai.git
     branch: master
     buildCommand: npm run build
-    staticPublishPath: .
+    staticPublishPath: frontend
     envVars:
       - key: API_URL
         value: https://cleanmind-backend.onrender.com/api

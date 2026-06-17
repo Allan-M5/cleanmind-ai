@@ -56,7 +56,7 @@ services:
     runtime: static
     repo: https://github.com/Allan-M5/cleanmind-ai.git
     branch: master
-    staticPublishPath: frontend
+    publishPath: frontend
     envVars:
       - key: API_URL
         value: https://cleanmind-backend.onrender.com/api

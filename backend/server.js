@@ -347,10 +347,17 @@ app.get('/api/ingest/status/:jobId', (req, res) => {
   res.json(status);
 });
 
-const PORT = 5000;
-app.listen(PORT, () => {
+// Wait for database connection before starting server
+const { dbReady } = require('./db');
+dbReady.then(() => {
+  app.listen(PORT, () => {
     console.log(`[CleanMind AI Backend Engine Node Service running explicitly on port ${PORT}]`);
-});
+  });
+}).catch(err => {
+  console.error('Failed to connect to database:', err);
+  process.exit(1);
+}););
+
 
 
 

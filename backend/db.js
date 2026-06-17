@@ -1,35 +1,36 @@
 ﻿const { Pool } = require('pg');
-// Explicitly load .env from the current directory
 require('dotenv').config({ path: './.env' });
 
-// Use environment variables, with hard-coded fallback for clarity
 const config = {
   host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT, 10) || 5432,
   user: process.env.DB_USER || 'cleanmind_user',
   password: process.env.DB_PASSWORD || 'CleanMind@2026!',
   database: process.env.DB_NAME || 'cleanmind_db',
-  connectionTimeoutMillis: 5000,
+  connectionTimeoutMillis: 30000, // 30 seconds
+  idleTimeoutMillis: 30000,
 };
-
-console.log('🔌 DB Config:', {
-  host: config.host,
-  port: config.port,
-  user: config.user,
-  database: config.database,
-  // password not logged for security
-});
 
 const pool = new Pool(config);
 
-pool.connect((err, client, release) => {
-  if (err) {
-    console.error('❌ PostgreSQL connection error:', err.stack);
-  } else {
-    console.log('✅ PostgreSQL connected successfully.');
-    release();
+// Retry connection with exponential backoff
+async function connectWithRetry(maxRetries = 5, delay = 1000) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const client = await pool.connect();
+      console.log('✅ PostgreSQL connected successfully.');
+      client.release();
+      return true;
+    } catch (err) {
+      console.warn(`⚠️ DB connection attempt ${i + 1} failed: ${err.message}`);
+      if (i === maxRetries - 1) throw err;
+      await new Promise(resolve => setTimeout(resolve, delay * (i + 1)));
+    }
   }
-});
+}
+
+// Expose a promise that resolves when connection is ready
+const dbReady = connectWithRetry();
 
 const query = async (text, params) => {
   try {
@@ -42,5 +43,4 @@ const query = async (text, params) => {
   }
 };
 
-module.exports = { query };
-
+module.exports = { query, pool, dbReady };

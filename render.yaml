@@ -1,0 +1,98 @@
+﻿services:
+  - type: web
+    name: cleanmind-backend
+    runtime: node
+    repo: https://github.com/Allan-M5/cleanmind-ai.git
+    branch: main
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: DB_HOST
+        fromDatabase:
+          name: cleanmind-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: cleanmind-db
+          property: port
+      - key: DB_USER
+        fromDatabase:
+          name: cleanmind-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: cleanmind-db
+          property: password
+      - key: DB_NAME
+        fromDatabase:
+          name: cleanmind-db
+          property: database
+      - key: JWT_SECRET
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        value: https://cleanmind-backend.onrender.com/api/auth/google/callback
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: cleanmind-redis
+          property: connectionString
+  - type: worker
+    name: cleanmind-worker
+    runtime: node
+    repo: https://github.com/Allan-M5/cleanmind-ai.git
+    branch: main
+    buildCommand: npm install
+    startCommand: node worker.js
+    envVars:
+      - key: DB_HOST
+        fromDatabase:
+          name: cleanmind-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: cleanmind-db
+          property: port
+      - key: DB_USER
+        fromDatabase:
+          name: cleanmind-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: cleanmind-db
+          property: password
+      - key: DB_NAME
+        fromDatabase:
+          name: cleanmind-db
+          property: database
+      - key: JWT_SECRET
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        value: https://cleanmind-backend.onrender.com/api/auth/google/callback
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: cleanmind-redis
+          property: connectionString
+  - type: redis
+    name: cleanmind-redis
+    plan: free
+  - type: postgresql
+    name: cleanmind-db
+    plan: free
+  - type: static
+    name: cleanmind-frontend
+    repo: https://github.com/Allan-M5/cleanmind-ai.git
+    branch: main
+    buildCommand: echo "No build needed"
+    publishPath: .
+    envVars:
+      - key: API_URL
+        value: https://cleanmind-backend.onrender.com

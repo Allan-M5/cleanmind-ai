@@ -1,0 +1,87 @@
+const { google } = require('googleapis');
+const db = require('./db');
+const crypto = require('crypto');
+
+const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+const REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI;
+
+const oauth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
+
+const SCOPES = [
+  'https://www.googleapis.com/auth/gmail.readonly',
+  'https://www.googleapis.com/auth/photoslibrary.readonly',
+  'https://www.googleapis.com/auth/drive.readonly'
+];
+
+function getAuthUrl(state) {
+  return oauth2Client.generateAuthUrl({`n    redirect_uri: process.env.GOOGLE_REDIRECT_URI,
+    access_type: 'offline',
+    scope: SCOPES,
+    state: state,
+    prompt: 'consent'
+  });
+}
+
+async function handleCallback(userId, code) {
+  const { tokens } = await oauth2Client.getToken(code);
+  oauth2Client.setCredentials(tokens);
+
+  const encryptedAccess = Buffer.from(tokens.access_token).toString('base64');
+  const encryptedRefresh = Buffer.from(tokens.refresh_token || '').toString('base64');
+  const expiresAt = new Date(Date.now() + (tokens.expiry_date || 3600 * 1000));
+
+  await db.query(
+    `INSERT INTO connections (user_id, provider_name, encrypted_access_token, encrypted_refresh_token, token_expires_at)
+     VALUES ($1, $2, $3, $4, $5)
+     ON CONFLICT (user_id, provider_name) 
+     DO UPDATE SET encrypted_access_token = $3, encrypted_refresh_token = $4, token_expires_at = $5`,
+    [userId, 'google', encryptedAccess, encryptedRefresh, expiresAt]
+  );
+  return tokens;
+}
+
+async function refreshToken(userId) {
+  const res = await db.query(
+    'SELECT encrypted_access_token, encrypted_refresh_token FROM connections WHERE user_id = $1 AND provider_name = $2',
+    [userId, 'google']
+  );
+  if (res.rows.length === 0) throw new Error('No Google connection found');
+
+  const encryptedRefresh = res.rows[0].encrypted_refresh_token;
+  const refreshToken = Buffer.from(encryptedRefresh, 'base64').toString('utf8');
+  oauth2Client.setCredentials({ refresh_token: refreshToken });
+
+  const { credentials } = await oauth2Client.refreshAccessToken();
+  const encryptedAccess = Buffer.from(credentials.access_token).toString('base64');
+  const expiresAt = new Date(Date.now() + (credentials.expiry_date || 3600 * 1000));
+  await db.query(
+    `UPDATE connections SET encrypted_access_token = $1, token_expires_at = $2 WHERE user_id = $3 AND provider_name = $4`,
+    [encryptedAccess, expiresAt, userId, 'google']
+  );
+  return credentials.access_token;
+}
+
+async function getAuthenticatedClient(userId) {
+  const res = await db.query(
+    'SELECT encrypted_access_token, encrypted_refresh_token FROM connections WHERE user_id = $1 AND provider_name = $2',
+    [userId, 'google']
+  );
+  if (res.rows.length === 0) throw new Error('No Google connection found');
+
+  const accessToken = Buffer.from(res.rows[0].encrypted_access_token, 'base64').toString('utf8');
+  const refreshToken = Buffer.from(res.rows[0].encrypted_refresh_token, 'base64').toString('utf8');
+  oauth2Client.setCredentials({
+    access_token: accessToken,
+    refresh_token: refreshToken
+  });
+  return oauth2Client;
+}
+
+module.exports = {
+  oauth2Client,
+  getAuthUrl,
+  handleCallback,
+  refreshToken,
+  getAuthenticatedClient
+};

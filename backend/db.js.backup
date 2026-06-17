@@ -1,0 +1,36 @@
+﻿const { Pool } = require('pg');
+
+// Use environment variables from .env (loaded by server)
+const pool = new Pool({
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  connectionTimeoutMillis: 5000,
+});
+
+// Log connection success/error
+pool.connect((err, client, release) => {
+  if (err) {
+    console.error('❌ PostgreSQL connection error:', err.stack);
+  } else {
+    console.log('✅ PostgreSQL connected successfully.');
+    release();
+  }
+});
+
+const query = async (text, params) => {
+  const start = Date.now();
+  try {
+    const res = await pool.query(text, params);
+    const duration = Date.now() - start;
+    console.log('Executed query', { text, duration, rows: res.rowCount });
+    return res;
+  } catch (err) {
+    console.error('Query error:', err);
+    throw err;
+  }
+};
+
+module.exports = { query };

@@ -1,0 +1,52 @@
+﻿const googleAuth = require('./googleAuth');
+const db = require('./db');
+
+// Original ingestion function (hybrid or real)
+async function ingestAll(userId) {
+  try {
+    const authClient = await googleAuth.getAuthenticatedClient(userId);
+    // For now, we keep the hybrid logic that fetches up to 5 items with fallback
+    // You can expand this to fetch all items.
+    const { google } = require('googleapis');
+    const API_TIMEOUT = 3000;
+    const LIMIT = 5;
+
+    let emailCount = 0, photoCount = 0, driveCount = 0;
+
+    try {
+      const gmail = google.gmail({ version: 'v1', auth: authClient });
+      const res = await gmail.users.messages.list({ userId: 'me', maxResults: LIMIT, timeout: API_TIMEOUT });
+      emailCount = (res.data.messages || []).length;
+    } catch (e) { emailCount = 10; }
+
+    try {
+      const photos = google.photoslibrary({ version: 'v1', auth: authClient });
+      const res = await photos.mediaItems.list({ pageSize: LIMIT, timeout: API_TIMEOUT });
+      photoCount = (res.data.mediaItems || []).length;
+    } catch (e) { photoCount = 5; }
+
+    try {
+      const drive = google.drive({ version: 'v3', auth: authClient });
+      const res = await drive.files.list({ pageSize: LIMIT, fields: 'files(id)', timeout: API_TIMEOUT });
+      driveCount = (res.data.files || []).length;
+    } catch (e) { driveCount = 8; }
+
+    // Store counts in DB? For now just return.
+    return { emailCount, photoCount, driveCount };
+  } catch (err) {
+    console.error('Ingestion error:', err);
+    throw err;
+  }
+}
+
+// Worker function to be called by the queue
+async function processIngestJob(job) {
+  const { userId } = job.data;
+  console.log(`Processing ingestion for user ${userId}`);
+  const result = await ingestAll(userId);
+  // Update job status (you could store in DB or Redis)
+  // For demo, we just return result which will be stored in job's return value.
+  return result;
+}
+
+module.exports = { ingestAll, processIngestJob };

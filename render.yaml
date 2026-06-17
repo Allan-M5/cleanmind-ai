@@ -1,6 +1,7 @@
 databases:
   - name: cleanmind-db
     plan: free
+    ipAllowList: []
 
 services:
   - type: redis

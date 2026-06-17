@@ -1,4 +1,4 @@
-﻿databases:
+databases:
   - name: cleanmind-db
     plan: free
 
@@ -11,6 +11,7 @@ services:
   - type: web
     name: cleanmind-backend
     runtime: node
+    plan: free
     repo: https://github.com/Allan-M5/cleanmind-ai.git
     branch: master
     buildCommand: npm install
@@ -53,6 +54,7 @@ services:
   - type: worker
     name: cleanmind-worker
     runtime: node
+    plan: free
     repo: https://github.com/Allan-M5/cleanmind-ai.git
     branch: master
     buildCommand: npm install

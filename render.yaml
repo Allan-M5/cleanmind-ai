@@ -6,6 +6,7 @@ services:
   - type: redis
     name: cleanmind-redis
     plan: free
+    ipAllowList: []
 
   - type: web
     name: cleanmind-backend

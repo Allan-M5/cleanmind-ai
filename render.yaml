@@ -56,7 +56,6 @@ services:
     runtime: static
     repo: https://github.com/Allan-M5/cleanmind-ai.git
     branch: master
-    buildCommand: npm run build
     staticPublishPath: frontend
     envVars:
       - key: API_URL

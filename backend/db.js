@@ -43,3 +43,4 @@ const query = async (text, params) => {
 };
 
 module.exports = { query };
+

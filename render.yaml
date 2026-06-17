@@ -3,7 +3,7 @@
     name: cleanmind-backend
     runtime: node
     repo: https://github.com/Allan-M5/cleanmind-ai.git
-    branch: main
+    branch: master
     buildCommand: npm install
     startCommand: node server.js
     envVars:
@@ -44,7 +44,7 @@
     name: cleanmind-worker
     runtime: node
     repo: https://github.com/Allan-M5/cleanmind-ai.git
-    branch: main
+    branch: master
     buildCommand: npm install
     startCommand: node worker.js
     envVars:
@@ -84,15 +84,15 @@
   - type: redis
     name: cleanmind-redis
     plan: free
-  - type: postgresql
+  - type: postgres
     name: cleanmind-db
     plan: free
-  - type: static
+  - type: static_site
     name: cleanmind-frontend
     repo: https://github.com/Allan-M5/cleanmind-ai.git
-    branch: main
-    buildCommand: echo "No build needed"
+    branch: master
+    buildCommand: npm run build
     publishPath: .
     envVars:
       - key: API_URL
-        value: https://cleanmind-backend.onrender.com
+        value: https://cleanmind-backend.onrender.com/api

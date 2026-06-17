@@ -356,18 +356,4 @@ dbReady.then(() => {
 }).catch(err => {
   console.error('Failed to connect to database:', err);
   process.exit(1);
-}););
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+});

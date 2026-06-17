@@ -328,11 +328,7 @@ app.post('/api/ingest', async (req, res) => {
 // ---------- Real BullMQ Queue ----------
 const { Queue } = require('bullmq');
 const Redis = require('ioredis');
-const connection = new Redis({
-  host: 'localhost',
-  port: 6379,
-  maxRetriesPerRequest: null,
-});
+const connection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
 const ingestionQueue = new Queue('ingestion', { connection });
 
 // Job status endpoint
@@ -353,6 +349,7 @@ const PORT = 5000;
 app.listen(PORT, () => {
     console.log(`[CleanMind AI Backend Engine Node Service running explicitly on port ${PORT}]`);
 });
+
 
 
 
